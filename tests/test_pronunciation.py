@@ -4,7 +4,58 @@ from unittest.mock import Mock, patch
 
 import numpy as np
 
+import agent
 import pronunciation
+
+
+class ConversationTests(unittest.TestCase):
+    def setUp(self):
+        agent.CONVERSATION_HISTORY.clear()
+
+    def tearDown(self):
+        agent.CONVERSATION_HISTORY.clear()
+
+    def test_text_replies_include_recent_conversation_context(self):
+        result = {
+            "corrected": "I like music.",
+            "explanation": "",
+            "error_count": 0,
+            "reply": "What kind of music do you enjoy?",
+        }
+        with (
+            patch("agent.storage.get_profile", return_value={"lang": "en", "level": "A2"}),
+            patch("agent.storage.log_event"),
+            patch("agent.grammar.correct_and_reply", return_value=result) as correct,
+        ):
+            agent.handle_text(7, "I like music.")
+            agent.handle_text(7, "I listen to jazz.")
+
+        self.assertEqual(
+            correct.call_args.kwargs["history"],
+            [
+                {"role": "user", "content": "I like music."},
+                {"role": "assistant", "content": "What kind of music do you enjoy?"},
+            ],
+        )
+
+    def test_conversation_history_is_limited_to_four_turns(self):
+        result = {
+            "corrected": "",
+            "explanation": "",
+            "error_count": 0,
+            "reply": "Tell me more.",
+        }
+        with (
+            patch("agent.storage.get_profile", return_value={"lang": "en", "level": "A2"}),
+            patch("agent.storage.log_event"),
+            patch("agent.grammar.correct_and_reply", return_value=result),
+        ):
+            for number in range(1, 6):
+                agent.handle_text(8, f"Turn {number}")
+
+        history = agent.CONVERSATION_HISTORY[8]
+        self.assertEqual(len(history), agent.MAX_CONVERSATION_MESSAGES)
+        self.assertEqual(history[0]["content"], "Turn 2")
 
 
 class TranscriptionTests(unittest.TestCase):

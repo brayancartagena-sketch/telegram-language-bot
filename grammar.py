@@ -12,10 +12,15 @@ SYSTEM = (
     '"corrected" (el mensaje corregido y fluido en {lang}; igual al original si no hay errores), '
     '"explanation" (en español, máximo 2 frases: explica el error o, si es una sola palabra correcta, su significado o uso; cadena vacía si no hay comentario útil), '
     '"error_count" (entero), '
-    '"reply" (respuesta breve y natural en {lang}, adecuada al nivel {level}, que termine con una pregunta). '
+    '"reply" (respuesta breve y natural en {lang}, adecuada al nivel {level}). '
     "Si el estudiante responde con una sola palabra, considérala una respuesta válida: corrige su "
     "ortografía si hace falta y explica brevemente su significado o uso en español. "
-    "Si recibes contexto de una imagen, acepta una palabra o una oración relacionada con ella."
+    "Si recibes contexto de una imagen, acepta una palabra o una oración relacionada con ella. "
+    "Usa el historial para dar continuidad y no vuelvas a preguntar algo que el estudiante ya contó. "
+    "Mantén un tono cálido y espontáneo: alterna entre reaccionar a lo que dijo, añadir un comentario "
+    "breve, proponer un mini-reto o hacer una pregunta cuando ayude a continuar. No termines siempre "
+    "con una pregunta ni repitas la misma fórmula. La respuesta conversacional debe estar en {lang}; "
+    "la explicación debe estar en español."
 )
 
 
@@ -48,6 +53,7 @@ def correct_and_reply(
     lang: str,
     level: str,
     image_context: str | None = None,
+    history: list[dict[str, str]] | None = None,
 ) -> dict:
     user_text = text
     if image_context:
@@ -56,10 +62,12 @@ def correct_and_reply(
             f"Respuesta del estudiante sobre la imagen: {text}"
         )
     messages = [
-        {"role": "system", "content": SYSTEM.format(lang=config.LANGS[lang], level=level)},
-        {"role": "user", "content": user_text},
+        {"role": "system", "content": SYSTEM.format(lang=config.LANGS[lang], level=level)}
     ]
-    out = _get_client().chat_completion(messages=messages, max_tokens=400, temperature=0.2)
+    if history:
+        messages.extend(history[-8:])
+    messages.append({"role": "user", "content": user_text})
+    out = _get_client().chat_completion(messages=messages, max_tokens=400, temperature=0.45)
     raw = out.choices[0].message.content
     try:
         return _parse(raw)

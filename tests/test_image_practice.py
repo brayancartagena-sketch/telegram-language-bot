@@ -10,10 +10,12 @@ class ImagePracticeTests(unittest.TestCase):
     def setUp(self):
         agent.PENDING.clear()
         agent.PENDING_IMAGE.clear()
+        agent.CONVERSATION_HISTORY.clear()
 
     def tearDown(self):
         agent.PENDING.clear()
         agent.PENDING_IMAGE.clear()
+        agent.CONVERSATION_HISTORY.clear()
 
     def test_uploaded_image_starts_text_practice_without_paid_vision(self):
         profile = {"lang": "en", "level": "A2"}
@@ -41,6 +43,7 @@ class ImagePracticeTests(unittest.TestCase):
             correct.call_args.kwargs["image_context"],
         )
         log_event.assert_called_once_with(1, "grammar", errors=0)
+        self.assertNotIn(1, agent.PENDING_IMAGE)
 
     def test_voice_description_uses_image_exercise_context(self):
         profile = {"lang": "en", "level": "A2"}
@@ -95,6 +98,29 @@ class ImagePracticeTests(unittest.TestCase):
         self.assertIn("una sola palabra", messages[0]["content"])
         self.assertIn("El usuario envió una imagen.", messages[1]["content"])
         self.assertEqual(result["corrected"], "bicycle")
+
+    def test_corrector_receives_recent_conversation_before_new_message(self):
+        output = SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(
+                        content='{"corrected":"I like tea.","explanation":"",'
+                        '"error_count":0,"reply":"Nice choice."}'
+                    )
+                )
+            ]
+        )
+        client = SimpleNamespace(chat_completion=Mock(return_value=output))
+        history = [
+            {"role": "assistant", "content": "What do you like to drink?"},
+            {"role": "user", "content": "Coffee."},
+        ]
+        with patch("grammar._get_client", return_value=client):
+            grammar.correct_and_reply("I like tea.", "en", "A2", history=history)
+
+        messages = client.chat_completion.call_args.kwargs["messages"]
+        self.assertEqual(messages[1:3], history)
+        self.assertEqual(messages[-1], {"role": "user", "content": "I like tea."})
 
 
 if __name__ == "__main__":

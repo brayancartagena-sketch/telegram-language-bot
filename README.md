@@ -10,3 +10,9 @@ Telegram → bot.py → agent.py ─┬─ grammar.py        (LLM en Hugging Fac
                               └─ storage.py        (SQLite: perfil y progreso)
 ```
 
+## Conversación interactiva
+
+- Puedes escribir libremente; el tutor usa los últimos cuatro turnos para mantener el contexto y variar sus respuestas, sin terminar siempre con una pregunta.
+- `/start` muestra botones para elegir idioma, nivel, tema, pronunciación y progreso. Los comandos `/lang`, `/level`, `/practice` y `/progress` siguen disponibles como atajos.
+- El historial conversacional se mantiene solo en memoria y se reinicia al reiniciar el bot o cambiar de idioma.
+
