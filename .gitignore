@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.py[cod]
+/progress.db
+/progress.db-journal
+/progress.db-shm
+/progress.db-wal
